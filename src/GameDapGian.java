@@ -17,6 +17,8 @@ public class GameDapGian extends JPanel implements ActionListener, MouseListener
     private Image gianImage; // Hình ảnh gián
     private Image shootImage; // Hình ảnh đạn hoặc hình ảnh vùng va chạm
 
+    private boolean isGamePaused = false; // Biến kiểm tra trạng thái game
+
     public GameDapGian() {
         gians = new ArrayList<>();
         gameManager = new GameManager();
@@ -42,13 +44,48 @@ public class GameDapGian extends JPanel implements ActionListener, MouseListener
 
         // Cập nhật con chuột mặc định
         setCursor(Toolkit.getDefaultToolkit().createCustomCursor(cursorImage, new Point(0, 0), "Custom Cursor"));
+
+        // Thêm lắng nghe phím để dừng game
+        addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+                    togglePause();
+                }
+            }
+        });
     }
 
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
 
-        // Vẽ nền
+        // Nếu game đang dừng, vẽ nền và các gián như bình thường
+        if (isGamePaused) {
+            g.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
+
+            // Vẽ gián
+            for (Gian gian : gians) {
+                Rectangle rect = gian.getRectangle();
+                g.drawImage(gianImage, rect.x, rect.y, rect.width, rect.height, this);
+            }
+
+            // Vẽ biểu tượng tạm dừng (nút tam giác nghiêng)
+            g.setColor(Color.WHITE);
+            g.fillPolygon(new int[]{getWidth() / 2 - 20, getWidth() / 2 + 20, getWidth() / 2 - 20},
+                    new int[]{getHeight() / 2 - 20, getHeight() / 2, getHeight() / 2 + 20}, 3);
+
+            // Vẽ điểm số, kỷ lục và số gián trượt khi game dừng
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("Arial", Font.BOLD, 20));
+            g.drawString("Điểm: " + gameManager.getScore(), 10, 20);
+            g.drawString("Trượt: " + gameManager.getMissedGians(), 10, 40);
+            g.drawString("Kỷ lục: " + gameManager.getHighScore(), 10, 60);
+
+            return;  // Dừng vẽ thêm những thứ khác nếu game đang dừng
+        }
+
+        // Vẽ nền và các đối tượng game khi game đang chơi
         g.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
 
         // Vẽ gián
@@ -63,11 +100,27 @@ public class GameDapGian extends JPanel implements ActionListener, MouseListener
             g.drawImage(shootImage, getMousePosition().x - shootImage.getWidth(null) / 2, getMousePosition().y - shootImage.getHeight(null) / 2, this);
         }
 
-        // Vẽ điểm số
+        // Vẽ điểm số, kỷ lục và số gián trượt khi game đang chơi
         g.setColor(Color.WHITE);
         g.setFont(new Font("Arial", Font.BOLD, 20));
         g.drawString("Điểm: " + gameManager.getScore(), 10, 20);
-        g.drawString("Trượt:"+ gameManager.getMissedChickens(),10,40);
+        g.drawString("Trượt: " + gameManager.getMissedGians(), 10, 40);
+        g.drawString("Kỷ lục: " + gameManager.getHighScore(), 10, 60);
+        g.setColor(Color.WHITE);
+
+        // Tọa độ các đỉnh của tam giác
+        int lineHeight = 40;  // Chiều dài của mỗi đường thẳng
+        int lineWidth = 10;    // Độ rộng của mỗi đường thẳng (có thể điều chỉnh)
+
+        // Khoảng cách từ cạnh trên và phải của khung hình
+        int margin = 10;
+
+        // Vẽ đường thẳng bên trái của nút "I"
+        g.fillRect(getWidth() - margin - lineWidth * 2, margin, lineWidth, lineHeight);
+
+        // Vẽ đường thẳng bên phải của nút "I"
+        g.fillRect(getWidth() - margin - lineWidth * 5, margin, lineWidth, lineHeight);
+
 
         // Game Over screen
         if (gameManager.isGameOver()) {
@@ -82,26 +135,26 @@ public class GameDapGian extends JPanel implements ActionListener, MouseListener
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        if (gameManager.isGameOver()) return;
+        if (isGamePaused || gameManager.isGameOver()) return;
 
         // Di chuyển gián
         Iterator<Gian> gianIterator = gians.iterator();
         while (gianIterator.hasNext()) {
             Gian gian = gianIterator.next();
-            gian.move(gameManager.getChickenSpeed());
+            gian.move(gameManager.getGianSpeed());
 
             // Nếu gián ra ngoài màn hình, loại bỏ gián và kiểm tra thua
             if (gian.isOutOfBounds(getHeight())) {
                 gianIterator.remove();
-                gameManager.incrementMissedChickens();
-                if (gameManager.getMissedChickens() >= 5) { // Nếu có 5 gián ra ngoài, kết thúc game
+                gameManager.incrementMissedGians();
+                if (gameManager.getMissedGians() >= 5) { // Nếu có 5 gián ra ngoài, kết thúc game
                     gameManager.endGame();
                 }
             }
         }
 
         // Tạo gián mới với xác suất
-        int spawnChance = 2 + (gameManager.getScore() / 50); // Tăng xác suất mỗi khi có 50 điểm
+        int spawnChance = 1 + (gameManager.getScore() / 50); // Tăng xác suất mỗi khi có 50 điểm
 
         // Kiểm tra và spawn gián không chồng lấn
         if (random.nextInt(100) < spawnChance) {
@@ -194,6 +247,11 @@ public class GameDapGian extends JPanel implements ActionListener, MouseListener
         gameManager.resetGame();
         gians.clear();
         repaint();
+    }
+
+    private void togglePause() {
+        isGamePaused = !isGamePaused;  // Đổi trạng thái tạm dừng
+        repaint();  // Vẽ lại màn hình khi dừng hoặc tiếp tục trò chơi
     }
 
     public static void main(String[] args) {
