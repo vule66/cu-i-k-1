@@ -1,14 +1,14 @@
 public class GameManager {
     private int score;
-    private int chickenSpeed;
-    private int missedChickens;
+    private int gianSpeed;
+    private int missedGians;
     private boolean isGameOver;
     private int highScore; // Lưu trữ kỷ lục
 
     public GameManager() {
         score = 0;
-        chickenSpeed = 2;
-        missedChickens = 0;
+        gianSpeed = 2;
+        missedGians = 0;
         isGameOver = false;
         highScore = 0; // Kỷ lục ban đầu là 0
     }
@@ -16,7 +16,7 @@ public class GameManager {
     public void increaseScore(int points) {
         score += points;
         if (score % 50 == 0) {
-            chickenSpeed++; // Tăng tốc độ gián mỗi 50 điểm
+            gianSpeed++; // Tăng tốc độ gián mỗi 50 điểm
         }
     }
 
@@ -28,7 +28,7 @@ public class GameManager {
     }
 
     public void incrementMissedGians() {
-        missedChickens++;
+        missedGians++;
     }
 
     public void resetGame() {
@@ -38,8 +38,8 @@ public class GameManager {
         }
 
         score = 0;
-        chickenSpeed = 2;
-        missedChickens = 0;
+        gianSpeed = 2;
+        missedGians = 0;
         isGameOver = false;
     }
 
@@ -56,11 +56,11 @@ public class GameManager {
     }
 
     public int getGianSpeed() {
-        return chickenSpeed;
+        return gianSpeed;
     }
 
     public int getMissedGians() {
-        return missedChickens;
+        return missedGians;
     }
 
     public boolean isGameOver() {

@@ -4,7 +4,7 @@ public class Gian {
     private Rectangle rectangle;
 
     public Gian(int x, int y) {
-        this.rectangle = new Rectangle(x, y, 50, 100); // Gà có kích thước 50x50
+        this.rectangle = new Rectangle(x, y, 50, 100); // Gà có kích thước 50x100
     }
 
     public Rectangle getRectangle() {

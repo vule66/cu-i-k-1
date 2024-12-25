@@ -18,6 +18,10 @@ public class GameDapGian extends JPanel implements ActionListener, MouseListener
     private Image shootImage; // Hình ảnh đạn hoặc hình ảnh vùng va chạm
 
     private boolean isGamePaused = false; // Biến kiểm tra trạng thái game
+    private boolean isCountdownActive = false; // Biến kiểm tra trạng thái đếm ngược
+    private int countdownTime = 0; // Thời gian đếm ngược còn lại
+
+    private Rectangle pauseButtonRect; // Vùng của nút tạm dừng
 
     public GameDapGian() {
         gians = new ArrayList<>();
@@ -25,16 +29,15 @@ public class GameDapGian extends JPanel implements ActionListener, MouseListener
         random = new Random();
 
         // Tải hình ảnh nền
-        backgroundImage = new ImageIcon(getClass().getResource("bgr.jpg")).getImage();
-
-        // Tải hình ảnh gián
-        gianImage = new ImageIcon(getClass().getResource("gias.gif")).getImage();
-
-        // Tải hình ảnh con chuột
-        cursorImage = new ImageIcon(getClass().getResource("vot.png")).getImage();
-
-        // Tải hình ảnh đạn
-        shootImage = new ImageIcon(getClass().getResource("vot.png")).getImage();
+        try {
+            backgroundImage = new ImageIcon(getClass().getResource("bgr.jpg")).getImage();
+            gianImage = new ImageIcon(getClass().getResource("gias.gif")).getImage();
+            cursorImage = new ImageIcon(getClass().getResource("vot.png")).getImage();
+            shootImage = new ImageIcon(getClass().getResource("vot.png")).getImage();
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.exit(1); // Thoát chương trình nếu không thể tải hình ảnh
+        }
 
         setFocusable(true);
         addMouseListener(this);
@@ -54,6 +57,13 @@ public class GameDapGian extends JPanel implements ActionListener, MouseListener
                 }
             }
         });
+
+        // Khởi tạo vùng nút tạm dừng
+        int pauseButtonWidth = 40;
+        int pauseButtonHeight = 40;
+        int pauseButtonX = getWidth() - pauseButtonWidth - 10; // 10 là khoảng cách từ cạnh khung hình
+        int pauseButtonY = 10; // Khoảng cách từ cạnh trên của khung hình
+        pauseButtonRect = new Rectangle(pauseButtonX, pauseButtonY, pauseButtonWidth, pauseButtonHeight);
     }
 
     @Override
@@ -70,10 +80,18 @@ public class GameDapGian extends JPanel implements ActionListener, MouseListener
                 g.drawImage(gianImage, rect.x, rect.y, rect.width, rect.height, this);
             }
 
-            // Vẽ biểu tượng tạm dừng (nút tam giác nghiêng)
-            g.setColor(Color.WHITE);
-            g.fillPolygon(new int[]{getWidth() / 2 - 20, getWidth() / 2 + 20, getWidth() / 2 - 20},
-                    new int[]{getHeight() / 2 - 20, getHeight() / 2, getHeight() / 2 + 20}, 3);
+            // Vẽ thời gian đếm ngược nếu đang đếm ngược
+            if (isCountdownActive) {
+                int secondsLeft = countdownTime / 1000 + 1; // Chuyển đổi thời gian đếm ngược sang giây và làm tròn lên
+                g.setFont(new Font("Arial", Font.BOLD, 100));
+                g.setColor(Color.RED);
+                g.drawString(String.valueOf(secondsLeft), getWidth() / 2 - 30, getHeight() / 2);
+            } else {
+                // Vẽ biểu tượng tạm dừng (nút tam giác nghiêng)
+                g.setColor(Color.WHITE);
+                g.fillPolygon(new int[]{getWidth() / 2 - 20, getWidth() / 2 + 20, getWidth() / 2 - 20},
+                        new int[]{getHeight() / 2 - 20, getHeight() / 2, getHeight() / 2 + 20}, 3);
+            }
 
             // Vẽ điểm số, kỷ lục và số gián trượt khi game dừng
             g.setColor(Color.WHITE);
@@ -95,9 +113,9 @@ public class GameDapGian extends JPanel implements ActionListener, MouseListener
         }
 
         // Vẽ vùng va chạm (đạn)
-        if (isMousePressed) {
-            // Vẽ hình ảnh đạn tại vị trí chuột
-            g.drawImage(shootImage, getMousePosition().x - shootImage.getWidth(null) / 2, getMousePosition().y - shootImage.getHeight(null) / 2, this);
+        Point mousePos = getMousePosition();
+        if (mousePos != null && isMousePressed) {
+            g.drawImage(shootImage, mousePos.x - shootImage.getWidth(null) / 2, mousePos.y - shootImage.getHeight(null) / 2, this);
         }
 
         // Vẽ điểm số, kỷ lục và số gián trượt khi game đang chơi
@@ -106,21 +124,16 @@ public class GameDapGian extends JPanel implements ActionListener, MouseListener
         g.drawString("Điểm: " + gameManager.getScore(), 10, 20);
         g.drawString("Trượt: " + gameManager.getMissedGians(), 10, 40);
         g.drawString("Kỷ lục: " + gameManager.getHighScore(), 10, 60);
-        g.setColor(Color.WHITE);
 
-        // Tọa độ các đỉnh của tam giác
+        // Vẽ nút tạm dừng
         int lineHeight = 40;  // Chiều dài của mỗi đường thẳng
         int lineWidth = 10;    // Độ rộng của mỗi đường thẳng (có thể điều chỉnh)
+        int margin = 10; // Khoảng cách từ cạnh trên và phải của khung hình
+        g.fillRect(getWidth() - margin - lineWidth * 3, margin, lineWidth, lineHeight);
+        g.fillRect(getWidth() - margin - lineWidth * 1, margin, lineWidth, lineHeight);
 
-        // Khoảng cách từ cạnh trên và phải của khung hình
-        int margin = 10;
-
-        // Vẽ đường thẳng bên trái của nút "I"
-        g.fillRect(getWidth() - margin - lineWidth * 2, margin, lineWidth, lineHeight);
-
-        // Vẽ đường thẳng bên phải của nút "I"
-        g.fillRect(getWidth() - margin - lineWidth * 5, margin, lineWidth, lineHeight);
-
+        // Cập nhật vị trí vùng nút tạm dừng
+        pauseButtonRect.setLocation(getWidth() - 10 - pauseButtonRect.width, 10);
 
         // Game Over screen
         if (gameManager.isGameOver()) {
@@ -135,8 +148,26 @@ public class GameDapGian extends JPanel implements ActionListener, MouseListener
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        if (isGamePaused || gameManager.isGameOver()) return;
+        if (isGamePaused) {
+            if (isCountdownActive) {
+                countdownTime -= 20; // Giảm thời gian đếm ngược (20 milliseconds)
+                if (countdownTime <= 0) {
+                    isCountdownActive = false;
+                    isGamePaused = false; // Tiếp tục trò chơi
+                }
+            }
+            repaint();
+            return;
+        }
 
+        if (gameManager.isGameOver()) return;
+
+        moveGians();
+        spawnGians();
+        repaint();
+    }
+
+    private void moveGians() {
         // Di chuyển gián
         Iterator<Gian> gianIterator = gians.iterator();
         while (gianIterator.hasNext()) {
@@ -152,7 +183,9 @@ public class GameDapGian extends JPanel implements ActionListener, MouseListener
                 }
             }
         }
+    }
 
+    private void spawnGians() {
         // Tạo gián mới với xác suất
         int spawnChance = 1 + (gameManager.getScore() / 50); // Tăng xác suất mỗi khi có 50 điểm
 
@@ -175,8 +208,6 @@ public class GameDapGian extends JPanel implements ActionListener, MouseListener
 
             gians.add(new Gian(randomX, 0)); // Tạo gián mới với vị trí X không chồng lên
         }
-
-        repaint();
     }
 
     @Override
@@ -186,7 +217,14 @@ public class GameDapGian extends JPanel implements ActionListener, MouseListener
             return;
         }
 
-        shootAt(e.getPoint());
+        Point clickPoint = e.getPoint();
+        if (pauseButtonRect.contains(clickPoint)) {
+            togglePause();
+        } else if (isGamePaused && !isCountdownActive) {
+            startCountdown();
+        } else {
+            shootAt(clickPoint);
+        }
     }
 
     @Override
@@ -251,7 +289,14 @@ public class GameDapGian extends JPanel implements ActionListener, MouseListener
 
     private void togglePause() {
         isGamePaused = !isGamePaused;  // Đổi trạng thái tạm dừng
+        isCountdownActive = false; // Hủy bỏ đếm ngược nếu đang đếm ngược
         repaint();  // Vẽ lại màn hình khi dừng hoặc tiếp tục trò chơi
+    }
+
+    private void startCountdown() {
+        countdownTime = 3000; // 3 giây (3000 milliseconds)
+        isCountdownActive = true;
+        repaint();
     }
 
     public static void main(String[] args) {
